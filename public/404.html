@@ -1,32 +1,25 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="utf-8">
-    <title>CrackPlace AI</title>
-    <script type="text/javascript">
-      // Single Page Apps for GitHub Pages
-      // MIT License
-      // https://github.com/rafgraph/spa-github-pages
-      
-      var l = window.location;
-      
-      // Dynamically calculate the number of path segments to preserve
-      // E.g., USERNAME.github.io/crackplace-frontend/ has 1 segment ("crackplace-frontend")
-      // Whereas custom domains or localhost have 0 segments
-      var pathSegmentsToKeep = 0;
-      if (l.hostname.indexOf('.github.io') !== -1) {
-        pathSegmentsToKeep = 1;
-      }
+<head>
+  <meta charset="utf-8">
+  <script>
+    var path = window.location.pathname;
+    var repo = "/crackplace-frontend";
 
-      var redirectUrl = l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
-        l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') + '/?/' +
-        l.pathname.slice(1).split('/').slice(pathSegmentsToKeep).join('/') +
-        (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
-        l.hash;
+    var newUrl =
+      window.location.origin +
+      repo +
+      "/?redirect=" +
+      encodeURIComponent(
+        path.replace(repo, "") +
+        window.location.search +
+        window.location.hash
+      );
 
-      l.replace(redirectUrl);
-    </script>
-  </head>
-  <body>
-  </body>
+    window.location.replace(newUrl);
+  </script>
+</head>
+<body>
+  Redirecting...
+</body>
 </html>

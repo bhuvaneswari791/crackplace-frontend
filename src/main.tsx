@@ -23,6 +23,14 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// Parse redirect query parameter to restore path for client-side routing on GitHub Pages
+const params = new URLSearchParams(window.location.search);
+const redirect = params.get('redirect');
+if (redirect) {
+  const base = import.meta.env.DEV ? '' : '/crackplace-frontend';
+  window.history.replaceState(null, '', base + redirect);
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
