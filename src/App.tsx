@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 import ProtectedRoute from './routes/ProtectedRoute';
 import DashboardLayout from './components/layout/DashboardLayout';
@@ -32,6 +32,7 @@ import CompanyHub from './pages/public/CompanyHub';
 import CompanyDetail from './pages/public/CompanyDetail';
 import PublicNotesHub from './pages/public/PublicNotesHub';
 import PublicNotesDetail from './pages/public/PublicNotesDetail';
+import NotFound from './pages/NotFound';
 
 export const App: React.FC = () => {
   const { initializeAuth, userProfile } = useAuthStore();
@@ -91,7 +92,7 @@ export const App: React.FC = () => {
         </Route>
 
         {/* Fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   );
