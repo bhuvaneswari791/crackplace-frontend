@@ -502,7 +502,7 @@ export const Coding: React.FC = () => {
         >
           {/* Editor Container */}
           <div 
-            className={`glass-panel rounded-3xl flex flex-col overflow-hidden relative editor-container
+            className={`glass-panel rounded-3xl flex flex-col relative editor-container overflow-y-auto md:overflow-hidden
               ${activeMobileTab === 'editor' ? 'flex h-full min-h-[450px]' : 'hidden md:flex md:h-full md:min-h-[450px]'}
               ${window.innerWidth >= 1024 ? 'min-h-[500px]' : 'min-h-[450px]'}
             `}
@@ -513,7 +513,7 @@ export const Coding: React.FC = () => {
               <span className="text-neon-cyan uppercase font-bold tracking-widest">Active Coding session</span>
             </div>
             
-            <div className="flex-1 min-h-[450px] relative">
+            <div className="flex-1 min-h-[450px] relative w-full h-full flex flex-col">
               <Editor
                 height="100%"
                 language={language === 'cpp' ? 'cpp' : language === 'python' ? 'python' : language === 'java' ? 'java' : 'javascript'}
@@ -548,8 +548,18 @@ export const Coding: React.FC = () => {
                   formatOnType: true,
                   padding: { top: 16, bottom: 16 },
                   cursorBlinking: 'smooth',
-                  cursorSmoothCaretAnimation: 'on'
-                }}
+                  cursorSmoothCaretAnimation: 'on',
+                  mouseWheel: true,
+                  smoothScrolling: true,
+                  fixedOverflowWidgets: true,
+                  scrollbar: {
+                    vertical: 'visible',
+                    horizontal: 'visible',
+                    verticalScrollbarSize: 12,
+                    horizontalScrollbarSize: 12,
+                    alwaysConsumeMouseWheel: true
+                  }
+                } as any}
               />
             </div>
 
