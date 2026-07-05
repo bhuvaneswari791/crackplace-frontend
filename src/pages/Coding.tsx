@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '../store/authStore';
 import Editor from '@monaco-editor/react';
 import { 
@@ -67,6 +67,8 @@ interface AIReview {
 
 export const Coding: React.FC = () => {
   const { token, updateProfile } = useAuthStore();
+  
+  const editorRef = useRef<any>(null);
   
   // Setup parameters
   const [selectedCategory, setSelectedCategory] = useState('Arrays');
@@ -143,6 +145,39 @@ export const Coding: React.FC = () => {
       setRunResult(null);
     }
   }, [language, problem]);
+
+  // Trigger layout recalculation on viewport/device/keyboard adjustments
+  useEffect(() => {
+    const handleResize = () => {
+      if (editorRef.current) {
+        editorRef.current.layout();
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    // Watch keyboard display via visualViewport if available
+    const vv = window.visualViewport;
+    if (vv) {
+      vv.addEventListener('resize', handleResize);
+      vv.addEventListener('scroll', handleResize);
+    }
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (vv) {
+        vv.removeEventListener('resize', handleResize);
+        vv.removeEventListener('scroll', handleResize);
+      }
+    };
+  }, []);
+
+  // Trigger layout when switching tabs
+  useEffect(() => {
+    if (activeMobileTab === 'editor' && editorRef.current) {
+      const timer = setTimeout(() => {
+        editorRef.current.layout();
+      }, 200); // delay to let tab display settle
+      return () => clearTimeout(timer);
+    }
+  }, [activeMobileTab]);
 
   const handleLaunchChallenge = async () => {
     setStatus('generating');
@@ -336,7 +371,7 @@ export const Coding: React.FC = () => {
 
   // State 3: Active Workspace
   return (
-    <div className="h-auto lg:h-[calc(100vh-140px)] flex flex-col gap-6 animate-fade-in pb-24 md:pb-16 lg:pb-0 relative overflow-hidden" id="coding-workspace">
+    <div className="h-[calc(100vh-190px)] md:h-[calc(100vh-160px)] lg:h-[calc(100vh-140px)] flex flex-col gap-6 animate-fade-in pb-24 md:pb-16 lg:pb-0 relative overflow-hidden" id="coding-workspace">
       {/* Workspace Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 px-2 select-none shrink-0">
         <div>
@@ -467,9 +502,9 @@ export const Coding: React.FC = () => {
         >
           {/* Editor Container */}
           <div 
-            className={`glass-panel rounded-3xl flex flex-col overflow-hidden relative
-              ${activeMobileTab === 'editor' ? 'flex' : 'hidden md:flex'}
-              ${window.innerWidth >= 1024 ? 'min-h-[500px]' : 'min-h-[400px]'}
+            className={`glass-panel rounded-3xl flex flex-col overflow-hidden relative editor-container
+              ${activeMobileTab === 'editor' ? 'flex h-full min-h-[450px]' : 'hidden md:flex md:h-full md:min-h-[450px]'}
+              ${window.innerWidth >= 1024 ? 'min-h-[500px]' : 'min-h-[450px]'}
             `}
             style={{ height: window.innerWidth >= 1024 ? `calc(100% - ${consoleHeight}px - 16px)` : undefined }}
           >
@@ -478,13 +513,20 @@ export const Coding: React.FC = () => {
               <span className="text-neon-cyan uppercase font-bold tracking-widest">Active Coding session</span>
             </div>
             
-            <div className="flex-1 min-h-0 relative">
+            <div className="flex-1 min-h-[450px] relative">
               <Editor
                 height="100%"
                 language={language === 'cpp' ? 'cpp' : language === 'python' ? 'python' : language === 'java' ? 'java' : 'javascript'}
                 theme="vs-dark"
                 value={code}
                 onChange={(value) => setCode(value || '')}
+                onMount={(editor) => {
+                  editorRef.current = editor;
+                  // Initial layout recalculation
+                  setTimeout(() => {
+                    editor.layout();
+                  }, 100);
+                }}
                 loading={<div className="flex items-center justify-center h-full text-neon-cyan animate-pulse">Initializing Cyber IDE...</div>}
                 options={{
                   minimap: { enabled: false },
@@ -494,8 +536,10 @@ export const Coding: React.FC = () => {
                   scrollBeyondLastLine: false,
                   readOnly: false,
                   automaticLayout: true,
-                  tabSize: language === 'python' ? 4 : 2,
+                  tabSize: 4,
                   insertSpaces: true,
+                  wordWrap: 'on',
+                  renderWhitespace: 'selection',
                   autoIndent: 'advanced',
                   bracketPairColorization: { enabled: true },
                   autoClosingBrackets: 'always',
