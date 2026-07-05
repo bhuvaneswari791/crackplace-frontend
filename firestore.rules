@@ -73,5 +73,29 @@ service cloud.firestore {
       allow create, update: if isAuthenticated();
       allow delete: if isAdmin();
     }
+
+    // Study Notes (Self-test)
+    match /studyNotes/{noteId} {
+      allow read: if isAuthenticated() && resource.data.uid == request.auth.uid;
+      allow write: if isAdmin();
+    }
+
+    // Coding Problems Catalog
+    match /coding_problems/{problemId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Mock HR Interviews
+    match /mock_interviews/{interviewId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow write: if isAdmin();
+    }
+
+    // PvP Battle History
+    match /battleHistory/{historyId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
   }
 }
