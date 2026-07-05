@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/authStore';
+import Editor from '@monaco-editor/react';
 import { 
   FaTerminal, 
   FaPlay, 
@@ -137,7 +138,8 @@ export const Coding: React.FC = () => {
   // Sync starter code when language changes or problem loads
   useEffect(() => {
     if (problem) {
-      setCode(problem.starterCode[language] || '');
+      const rawCode = problem.starterCode[language] || '';
+      setCode(cleanAndFormatCode(rawCode, language, problem.title));
       setRunResult(null);
     }
   }, [language, problem]);
@@ -476,12 +478,36 @@ export const Coding: React.FC = () => {
               <span className="text-neon-cyan uppercase font-bold tracking-widest">Active Coding session</span>
             </div>
             
-            <textarea
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              spellCheck={false}
-              className="flex-1 p-6 font-mono text-sm text-gray-300 bg-transparent resize-none focus:outline-none leading-relaxed select-text"
-            />
+            <div className="flex-1 min-h-0 relative">
+              <Editor
+                height="100%"
+                language={language === 'cpp' ? 'cpp' : language === 'python' ? 'python' : language === 'java' ? 'java' : 'javascript'}
+                theme="vs-dark"
+                value={code}
+                onChange={(value) => setCode(value || '')}
+                loading={<div className="flex items-center justify-center h-full text-neon-cyan animate-pulse">Initializing Cyber IDE...</div>}
+                options={{
+                  minimap: { enabled: false },
+                  fontSize: 14,
+                  lineNumbers: 'on',
+                  roundedSelection: true,
+                  scrollBeyondLastLine: false,
+                  readOnly: false,
+                  automaticLayout: true,
+                  tabSize: language === 'python' ? 4 : 2,
+                  insertSpaces: true,
+                  autoIndent: 'advanced',
+                  bracketPairColorization: { enabled: true },
+                  autoClosingBrackets: 'always',
+                  autoClosingQuotes: 'always',
+                  formatOnPaste: true,
+                  formatOnType: true,
+                  padding: { top: 16, bottom: 16 },
+                  cursorBlinking: 'smooth',
+                  cursorSmoothCaretAnimation: 'on'
+                }}
+              />
+            </div>
 
             {/* Desktop & Tablet Actions Bar */}
             <div className="hidden md:flex px-6 py-4 border-t border-white/5 bg-white/[0.01] justify-end gap-3 select-none">
@@ -762,5 +788,276 @@ export const Coding: React.FC = () => {
     </div>
   );
 };
+
+/**
+ * Utility to clean, deduplicate, validate, and format starter code templates.
+ * Enforces strict LeetCode-style templates and eliminates syntax errors/duplicates.
+ */
+export function cleanAndFormatCode(code: string, lang: string, title: string = 'solve'): string {
+  if (!code || typeof code !== 'string') {
+    return generateFallbackTemplate(lang, title);
+  }
+
+  let lines = code.split('\n').map(line => line.trimEnd());
+  
+  if (lang === 'python') {
+    let cleanedLines: string[] = [];
+    let seenSolutionClass = false;
+    let seenMethods = new Set<string>();
+    
+    // Auto-inject standard imports for Python
+    let imports = [
+      "from typing import List, Dict, Set, Tuple, Optional, Union",
+      ""
+    ];
+    
+    for (let i = 0; i < lines.length; i++) {
+      let trimmed = lines[i].trim();
+      
+      // Filter out duplicate or conflicting typing imports
+      if (trimmed.startsWith('from typing import') || trimmed.startsWith('import typing')) {
+        continue;
+      }
+      
+      if (trimmed.startsWith('class Solution')) {
+        if (seenSolutionClass) continue;
+        seenSolutionClass = true;
+        cleanedLines.push('class Solution:');
+        continue;
+      }
+      
+      if (trimmed.startsWith('def ')) {
+        let match = trimmed.match(/def\s+(\w+)/);
+        if (match) {
+          let methodName = match[1];
+          if (seenMethods.has(methodName)) continue;
+          seenMethods.add(methodName);
+        }
+      }
+      
+      // Filter out stray standalone assignment lines that are duplicates of method vars
+      if (!seenSolutionClass && (trimmed.startsWith('ans =') || trimmed.startsWith('return '))) {
+        continue;
+      }
+      
+      cleanedLines.push(lines[i]);
+    }
+    
+    // Re-verify class Solution wrap
+    if (!seenSolutionClass) {
+      cleanedLines = ['class Solution:', ...cleanedLines.map(l => '    ' + l)];
+    }
+    
+    // Format indentation level-by-level
+    let formattedLines: string[] = [...imports];
+    let currentIndent = 0;
+    
+    for (let line of cleanedLines) {
+      let trimmed = line.trim();
+      if (!trimmed) {
+        if (formattedLines.length > 0 && formattedLines[formattedLines.length - 1] !== '') {
+          formattedLines.push('');
+        }
+        continue;
+      }
+      
+      if (trimmed.startsWith('class Solution:')) {
+        formattedLines.push('class Solution:');
+        currentIndent = 4;
+        continue;
+      }
+      
+      if (trimmed.startsWith('def ')) {
+        // Enforce exactly 4 spaces indent for method declaration inside Solution class
+        formattedLines.push(' '.repeat(4) + trimmed);
+        currentIndent = 8;
+        continue;
+      }
+      
+      // Inside method body: enforce standard 8-space indentation
+      if (trimmed === 'pass') {
+        formattedLines.push(' '.repeat(8) + 'pass');
+        continue;
+      }
+      
+      // Auto-correct statements outside loops or bad indent blocks
+      formattedLines.push(' '.repeat(currentIndent) + trimmed);
+      
+      // Adjust indentation dynamically for nested control flows
+      if (trimmed.endsWith(':')) {
+        currentIndent = Math.min(16, currentIndent + 4);
+      } else if (trimmed.startsWith('return ') || trimmed.startsWith('raise ')) {
+        // Reset to method indent on return statement
+        currentIndent = 8;
+      }
+    }
+    
+    // Fallback if no methods are generated
+    if (seenMethods.size === 0) {
+      return generateFallbackTemplate('python', title);
+    }
+    
+    return formattedLines.join('\n').trim() + '\n';
+  }
+  
+  if (lang === 'java' || lang === 'cpp') {
+    let cleanedLines: string[] = [];
+    let seenSolutionClass = false;
+    
+    for (let i = 0; i < lines.length; i++) {
+      let trimmed = lines[i].trim();
+      
+      if (trimmed.startsWith('class Solution')) {
+        if (seenSolutionClass) {
+          // skip the duplicate class body
+          let localBraces = 0;
+          for (let j = i; j < lines.length; j++) {
+            if (lines[j].includes('{')) localBraces++;
+            if (lines[j].includes('}')) localBraces--;
+            if (localBraces === 0 && j > i) {
+              i = j;
+              break;
+            }
+          }
+          continue;
+        }
+        seenSolutionClass = true;
+      }
+      cleanedLines.push(lines[i]);
+    }
+    
+    if (!seenSolutionClass) {
+      return generateFallbackTemplate(lang, title);
+    }
+    
+    // Formatting curly braces & indents
+    let formattedLines: string[] = [];
+    let indentLevel = 0;
+    
+    for (let line of cleanedLines) {
+      let trimmed = line.trim();
+      if (!trimmed) {
+        if (formattedLines.length > 0 && formattedLines[formattedLines.length - 1] !== '') {
+          formattedLines.push('');
+        }
+        continue;
+      }
+      
+      if (trimmed.startsWith('}')) {
+        indentLevel = Math.max(0, indentLevel - 1);
+      }
+      
+      formattedLines.push(' '.repeat(indentLevel * 4) + trimmed);
+      
+      if (trimmed.endsWith('{') || trimmed.includes('{')) {
+        indentLevel++;
+      }
+    }
+    
+    let output = formattedLines.join('\n');
+    
+    // Semicolon correction on C++ class
+    if (lang === 'cpp' && !output.includes('};') && output.includes('class Solution')) {
+      let lastBraceIdx = output.lastIndexOf('}');
+      if (lastBraceIdx !== -1) {
+        output = output.substring(0, lastBraceIdx) + '};' + output.substring(lastBraceIdx + 1);
+      }
+    }
+    
+    return output.trim() + '\n';
+  }
+  
+  if (lang === 'javascript') {
+    let formattedLines: string[] = [];
+    let indentLevel = 0;
+    let seenFunctions = new Set<string>();
+    
+    for (let line of lines) {
+      let trimmed = line.trim();
+      if (!trimmed) {
+        if (formattedLines.length > 0 && formattedLines[formattedLines.length - 1] !== '') {
+          formattedLines.push('');
+        }
+        continue;
+      }
+      
+      // Deduplicate function signatures
+      if (trimmed.startsWith('function ')) {
+        let match = trimmed.match(/function\s+(\w+)/);
+        if (match) {
+          let funcName = match[1];
+          if (seenFunctions.has(funcName)) {
+            continue;
+          }
+          seenFunctions.add(funcName);
+        }
+      }
+      
+      if (trimmed.startsWith('}')) {
+        indentLevel = Math.max(0, indentLevel - 1);
+      }
+      
+      formattedLines.push(' '.repeat(indentLevel * 4) + trimmed);
+      
+      if (trimmed.endsWith('{') || trimmed.includes('{')) {
+        indentLevel++;
+      }
+    }
+    
+    return formattedLines.join('\n').trim() + '\n';
+  }
+  
+  return code;
+}
+
+/**
+ * Automatically creates clean standard LeetCode/HackerRank starter code
+ * fallback templates if AI results are empty, invalid, or fail checks.
+ */
+function generateFallbackTemplate(lang: string, title: string): string {
+  // Convert title to camelCase method name (e.g. "Single Number" -> "singleNumber")
+  let methodName = title
+    .replace(/[^a-zA-Z0-9\s]/g, '')
+    .split(/\s+/)
+    .map((word, idx) => idx === 0 ? word.toLowerCase() : word.charAt(0).toUpperCase() + word.slice(1))
+    .join('');
+    
+  if (!methodName) methodName = 'solve';
+
+  switch (lang) {
+    case 'python':
+      return `from typing import List
+
+class Solution:
+    def ${methodName}(self, nums: List[int]) -> int:
+        pass
+`;
+    case 'java':
+      return `class Solution {
+    public int ${methodName}(int[] nums) {
+        return 0;
+    }
+}
+`;
+    case 'cpp':
+      return `class Solution {
+public:
+    int ${methodName}(vector<int>& nums) {
+        return 0;
+    }
+};
+`;
+    case 'javascript':
+    default:
+      return `/**
+ * @param {number[]} nums
+ * @return {number}
+ */
+function ${methodName}(nums) {
+    return 0;
+}
+`;
+  }
+}
 
 export default Coding;
