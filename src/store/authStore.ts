@@ -48,7 +48,26 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           const userDocRef = doc(db, 'users', user.uid);
           unsubscribeSnapshot = onSnapshot(userDocRef, (docSnap) => {
             if (docSnap.exists()) {
-              set({ userProfile: docSnap.data() as UserProfile, loading: false });
+              const prevProfile = get().userProfile;
+              const newProfile = docSnap.data() as UserProfile;
+              if (prevProfile && newProfile) {
+                const prevXp = prevProfile.xp || 0;
+                const newXp = newProfile.xp || 0;
+                if (newXp > prevXp) {
+                  window.dispatchEvent(new CustomEvent('xp-earned', { detail: { amount: newXp - prevXp } }));
+                }
+                const prevCoins = prevProfile.coins || 0;
+                const newCoins = newProfile.coins || 0;
+                if (newCoins > prevCoins) {
+                  window.dispatchEvent(new CustomEvent('coins-earned', { detail: { amount: newCoins - prevCoins } }));
+                }
+                const prevLevel = prevProfile.level || 1;
+                const newLevel = newProfile.level || 1;
+                if (newLevel > prevLevel) {
+                  window.dispatchEvent(new CustomEvent('level-up', { detail: { level: newLevel } }));
+                }
+              }
+              set({ userProfile: newProfile, loading: false });
             }
           }, (err) => {
             console.error('Real-time profile listener error:', err);

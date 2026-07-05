@@ -6,7 +6,7 @@ import { FaChevronLeft, FaCalendar, FaUser, FaClock, FaBookOpen } from 'react-ic
 
 export const BlogPost: React.FC = () => {
   const { postSlug } = useParams<{ postSlug: string }>();
-  
+
   const post = BLOG_POSTS.find(p => p.slug === postSlug);
 
   if (!post) {
@@ -30,7 +30,7 @@ export const BlogPost: React.FC = () => {
 
             <h2>2. Java Garbage Collection</h2>
             <p>Garbage Collection (GC) is Java's automatic memory management. It identifies objects that are no longer referenced in the heap memory and deallocates them. Common GC algorithms include G1 (Garbage-First) and ZGC.</p>
-            
+
             <h2>3. Multi-Threading and Thread Safe Collections</h2>
             <p>Multithreading is concurrent execution of multiple threads. To prevent race conditions, Java uses synchronization, volatile keywords, and thread-safe wrappers like <code>ConcurrentHashMap</code> and <code>CopyOnWriteArrayList</code>.</p>
           </>
@@ -115,7 +115,7 @@ export const BlogPost: React.FC = () => {
     },
     'mainEntityOfPage': {
       '@type': 'WebPage',
-      '@id': `https://bhuvaneswari791.github.io/CrackPlace-AI/blog/${post.slug}`
+      '@id': `https://bhuvaneswari791.github.io/crackplace-frontend/blog/${post.slug}`
     }
   };
 
@@ -131,8 +131,8 @@ export const BlogPost: React.FC = () => {
   return (
     <div className="min-h-screen bg-bg-dark text-white gradient-bg flex flex-col justify-between py-12 px-6 md:px-12">
       <article className="max-w-3xl mx-auto w-full space-y-8">
-        <Link 
-          to="/blog" 
+        <Link
+          to="/blog"
           className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-gray-400 hover:text-white transition-colors"
         >
           <FaChevronLeft className="w-3 h-3" />

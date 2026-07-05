@@ -62,4 +62,23 @@ export interface UserProfile {
   favoriteCosmetics?: string[];
   recentlyUsedCosmetics?: string[];
   favoriteItems?: FavoriteItems;
+
+  // Customize Profile Details
+  username?: string;
+  usernameLower?: string;
+  degree?: string;
+  graduationYear?: string;
+  semester?: string;
+  careerGoal?: string;
+  preferredRole?: string;
+  country?: string;
+  state?: string;
+  city?: string;
+  linkedin?: string;
+  github?: string;
+  portfolio?: string;
+  leetcode?: string;
+  hackerrank?: string;
+  codeforces?: string;
+  profileCompletedXPClaimed?: boolean;
 }

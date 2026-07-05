@@ -281,3 +281,107 @@ html[data-theme="theme_glass"] {
   --color-neon-cyan: #06b6d4;
 }
 
+/* Print-specific layout styling overrides */
+@media print {
+  body {
+    background-color: white !important;
+    background-image: none !important;
+    color: black !important;
+  }
+  
+  /* Hide non-printable elements */
+  .print-hidden,
+  .print\:hidden,
+  header,
+  nav,
+  footer,
+  aside,
+  button,
+  .sidebar,
+  form,
+  .glass-panel:not(.print-container),
+  .print-hide {
+    display: none !important;
+  }
+
+  /* Full width layout for notes */
+  .print-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    color: black !important;
+  }
+  
+  /* Force dark text and clean formatting on white background */
+  .print-container h1, 
+  .print-container h2, 
+  .print-container h3, 
+  .print-container h4, 
+  .print-container p, 
+  .print-container li, 
+  .print-container blockquote,
+  .print-container td,
+  .print-container th {
+    color: black !important;
+    text-shadow: none !important;
+  }
+
+  /* Keep table borders visible but clean */
+  .print-container table {
+    border-collapse: collapse !important;
+    border-color: #ddd !important;
+  }
+
+  .print-container th, 
+  .print-container td {
+    border: 1px solid #ddd !important;
+    color: black !important;
+  }
+
+  /* Code blocks in print */
+  .print-container pre {
+    background-color: #f5f5f5 !important;
+    border: 1px solid #ccc !important;
+    color: black !important;
+    page-break-inside: avoid;
+  }
+
+  .print-container code {
+    color: black !important;
+    background-color: #f5f5f5 !important;
+  }
+}
+
+/* Smooth scrolling for notes navigation */
+.smooth-scroll {
+  scroll-behavior: smooth;
+}
+
+@keyframes floatUpFade {
+  0% {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  10% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  90% {
+    transform: translateY(-40px);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-60px);
+    opacity: 0;
+  }
+}
+
+.animate-float-up-fade {
+  animation: floatUpFade 2s ease-out forwards;
+}
+
+

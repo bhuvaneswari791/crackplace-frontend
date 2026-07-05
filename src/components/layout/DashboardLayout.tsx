@@ -21,6 +21,44 @@ export const DashboardLayout: React.FC = () => {
     window.addEventListener('login-reward-claimed', handleReward);
     return () => window.removeEventListener('login-reward-claimed', handleReward);
   }, []);
+
+  const [floatingRewards, setFloatingRewards] = useState<{ id: string; amount: number; type: 'xp' | 'coins' }[]>([]);
+  const [showLevelUpModal, setShowLevelUpModal] = useState<{ level: number } | null>(null);
+
+  useEffect(() => {
+    const handleXpEarned = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      const id = Math.random().toString(36).substring(2, 9);
+      setFloatingRewards(prev => [...prev, { id, amount: detail.amount, type: 'xp' }]);
+      setTimeout(() => {
+        setFloatingRewards(prev => prev.filter(r => r.id !== id));
+      }, 2000);
+    };
+
+    const handleCoinsEarned = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      const id = Math.random().toString(36).substring(2, 9);
+      setFloatingRewards(prev => [...prev, { id, amount: detail.amount, type: 'coins' }]);
+      setTimeout(() => {
+        setFloatingRewards(prev => prev.filter(r => r.id !== id));
+      }, 2000);
+    };
+
+    const handleLevelUp = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setShowLevelUpModal({ level: detail.level });
+    };
+
+    window.addEventListener('xp-earned', handleXpEarned);
+    window.addEventListener('coins-earned', handleCoinsEarned);
+    window.addEventListener('level-up', handleLevelUp);
+
+    return () => {
+      window.removeEventListener('xp-earned', handleXpEarned);
+      window.removeEventListener('coins-earned', handleCoinsEarned);
+      window.removeEventListener('level-up', handleLevelUp);
+    };
+  }, []);
   const [activeToast, setActiveToast] = useState<{ id: string; type: string; title: string; message: string } | null>(null);
 
   useEffect(() => {
@@ -226,6 +264,52 @@ export const DashboardLayout: React.FC = () => {
           >
             ✕
           </button>
+        </div>
+      )}
+      {/* Floating Rewards Container */}
+      <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 pointer-events-none flex flex-col items-center gap-2">
+        {floatingRewards.map((reward) => (
+          <div
+            key={reward.id}
+            className={`px-4 py-2 rounded-full font-display font-black text-sm shadow-lg flex items-center gap-1.5 animate-float-up-fade
+              ${reward.type === 'xp' 
+                ? 'bg-neon-purple/20 border border-neon-purple/40 text-neon-purple' 
+                : 'bg-yellow-400/20 border border-yellow-400/40 text-yellow-400'
+              }`}
+          >
+            <span>{reward.type === 'xp' ? '⚡' : '🪙'}</span>
+            <span>+{reward.amount} {reward.type === 'xp' ? 'XP' : 'Coins'}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Level Up Celebration Modal */}
+      {showLevelUpModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in">
+          <div className="glass-panel p-8 rounded-3xl max-w-sm w-full text-center space-y-6 animate-scale-up relative border border-neon-cyan/35">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-neon-cyan/10 rounded-full blur-3xl pointer-events-none"></div>
+            
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-tr from-neon-cyan to-neon-purple shadow-xl shadow-neon-cyan/20 animate-bounce mx-auto">
+              <span className="text-4xl">🚀</span>
+            </div>
+
+            <div className="space-y-2">
+              <h2 className="font-display font-black text-2xl text-white tracking-wide uppercase">LEVEL UP!</h2>
+              <p className="text-xs text-gray-400">Your placement readiness has expanded!</p>
+            </div>
+
+            <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">New Rank</span>
+              <span className="font-display font-black text-2xl text-neon-cyan">Level {showLevelUpModal.level}</span>
+            </div>
+
+            <button
+              onClick={() => setShowLevelUpModal(null)}
+              className="w-full py-4 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-purple text-white font-display font-bold text-xs tracking-widest uppercase shadow-lg shadow-neon-cyan/25 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+            >
+              ACKNOWLEDGE
+            </button>
+          </div>
         </div>
       )}
     </div>

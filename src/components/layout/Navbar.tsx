@@ -12,9 +12,32 @@ export const Navbar: React.FC<NavbarProps> = ({ onMenuClick }) => {
 
   if (!userProfile) return null;
 
-  // Level XP calculations (e.g., Level up requires Level * 500 XP)
-  const nextLevelXp = userProfile.level * 500;
-  const xpPercentage = Math.min((userProfile.xp / nextLevelXp) * 100, 100);
+  const getXpRequiredForLevel = (lvl: number): number => {
+    if (lvl <= 1) return 100;
+    let total = 100;
+    for (let i = 2; i <= lvl; i++) {
+      total += 100 + 50 * (i - 1);
+    }
+    return total;
+  };
+
+  const calculateLevelDetails = (xp: number) => {
+    let lvl = 1;
+    while (true) {
+      const requiredForNext = getXpRequiredForLevel(lvl);
+      if (xp < requiredForNext) {
+        break;
+      }
+      lvl++;
+    }
+    const currentLvlBaseXp = lvl === 1 ? 0 : getXpRequiredForLevel(lvl - 1);
+    const nextLvlRequiredXp = getXpRequiredForLevel(lvl);
+    const progress = xp - currentLvlBaseXp;
+    const required = nextLvlRequiredXp - currentLvlBaseXp;
+    return { level: lvl, progress, required, percentage: Math.min((progress / required) * 100, 100) };
+  };
+
+  const lvlDetails = calculateLevelDetails(userProfile.xp || 0);
 
   return (
     <header className="fixed top-0 right-0 left-0 md:left-64 z-10 flex items-center justify-between px-4 md:px-8 h-20 border-b border-white/5 bg-bg-dark/40 backdrop-blur-xl">
@@ -65,12 +88,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onMenuClick }) => {
         <div className="hidden md:flex flex-col w-36">
           <div className="flex justify-between items-center text-[10px] font-bold text-gray-400 mb-1">
             <span>LV. {userProfile.level}</span>
-            <span>{userProfile.xp} / {nextLevelXp} XP</span>
+            <span>{lvlDetails.progress} / {lvlDetails.required} XP</span>
           </div>
           <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden border border-white/5">
             <div 
-              className="h-full rounded-full bg-gradient-to-r from-neon-purple to-neon-pink shadow-glow" 
-              style={{ width: `${xpPercentage}%` }}
+              className="h-full rounded-full bg-gradient-to-r from-neon-purple to-neon-pink shadow-glow transition-all duration-500 ease-out" 
+              style={{ width: `${lvlDetails.percentage}%` }}
             ></div>
           </div>
         </div>

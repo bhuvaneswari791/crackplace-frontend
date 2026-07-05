@@ -12,9 +12,15 @@ import {
   FaChevronLeft, 
   FaCheck,
   FaXmark,
-  FaArrowLeft
+  FaArrowLeft,
+  FaDownload,
+  FaFilePdf
 } from 'react-icons/fa6';
 import { motion, AnimatePresence } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
+import 'highlight.js/styles/github-dark.css';
 
 interface MCQQuestion {
   questionText: string;
@@ -69,8 +75,120 @@ const PRE_CURATED_TOPICS: { [key: string]: string[] } = {
   'Custom': []
 };
 
+const cleanMarkdown = (text: string): string => {
+  if (!text) return '';
+  return text
+    .replace(/\\n/g, '\n')       // Replace literal \n
+    .replace(/\\t/g, '  ')        // Replace literal \t
+    .replace(/\r\n/g, '\n')       // Normalize CRLF to LF
+    .replace(/\\"/g, '"')         // Unescape double quotes
+    .replace(/\\'/g, "'")         // Unescape single quotes
+    .replace(/\\\\/g, '\\')       // Unescape double backslash
+    .replace(/\n{3,}/g, '\n\n')   // Max 2 consecutive newlines
+    .trim();
+};
+
+const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
+  const sanitized = useMemo(() => cleanMarkdown(content), [content]);
+
+  return (
+    <div className="prose max-w-none text-left print:text-black leading-relaxed text-gray-300 select-text smooth-scroll">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeHighlight]}
+        components={{
+          h1: ({ node, ...props }) => (
+            <h1 className="font-display font-black text-2xl md:text-3xl text-white mt-8 mb-4 border-b border-white/10 pb-3 uppercase tracking-wide" {...props} />
+          ),
+          h2: ({ node, ...props }) => (
+            <h2 className="font-display font-bold text-xl md:text-2xl text-neon-purple mt-7 mb-3.5 uppercase tracking-wide" {...props} />
+          ),
+          h3: ({ node, ...props }) => (
+            <h3 className="font-display font-bold text-base md:text-lg text-neon-cyan mt-6 mb-3 uppercase tracking-wide" {...props} />
+          ),
+          h4: ({ node, ...props }) => (
+            <h4 className="font-display font-bold text-sm md:text-base text-neon-pink mt-5 mb-2 uppercase tracking-wide" {...props} />
+          ),
+          p: ({ node, ...props }) => (
+            <p className="text-sm md:text-base text-gray-300 leading-relaxed my-4 font-normal" {...props} />
+          ),
+          ul: ({ node, ...props }) => (
+            <ul className="list-disc pl-6 my-4 text-sm md:text-base text-gray-300 space-y-2" {...props} />
+          ),
+          ol: ({ node, ...props }) => (
+            <ol className="list-decimal pl-6 my-4 text-sm md:text-base text-gray-300 space-y-2" {...props} />
+          ),
+          li: ({ node, ...props }) => (
+            <li className="text-sm md:text-base text-gray-300" {...props} />
+          ),
+          blockquote: ({ node, ...props }) => (
+            <blockquote className="border-l-4 border-neon-pink bg-neon-pink/5 pl-4 pr-2 py-3 rounded-r-xl my-4 text-sm text-gray-400 italic font-medium" {...props} />
+          ),
+          hr: ({ node, ...props }) => (
+            <hr className="border-white/10 my-8" {...props} />
+          ),
+          table: ({ node, ...props }) => (
+            <div className="overflow-x-auto my-6 rounded-xl border border-white/10 shadow-lg scrollbar-thin">
+              <table className="w-full text-left text-sm text-gray-300 border-collapse" {...props} />
+            </div>
+          ),
+          thead: ({ node, ...props }) => (
+            <thead className="bg-white/5 border-b border-white/10" {...props} />
+          ),
+          tbody: ({ node, ...props }) => (
+            <tbody className="divide-y divide-white/5" {...props} />
+          ),
+          th: ({ node, ...props }) => (
+            <th className="px-4 py-3 font-display font-bold text-white uppercase tracking-wider text-xs border-b border-white/10" {...props} />
+          ),
+          td: ({ node, ...props }) => (
+            <td className="px-4 py-3 text-xs md:text-sm" {...props} />
+          ),
+          code: ({ node, className, children, ...props }) => {
+            const match = /language-(\w+)/.exec(className || '');
+            const isInline = !className || !String(children).includes('\n');
+            
+            if (isInline) {
+              return (
+                <code className="bg-white/10 px-1.5 py-0.5 rounded text-neon-cyan font-mono text-xs font-semibold" {...props}>
+                  {children}
+                </code>
+              );
+            }
+
+            const codeText = String(children).replace(/\n$/, '');
+            return (
+              <div className="relative my-6 rounded-xl overflow-hidden border border-white/10 shadow-lg group">
+                <div className="flex justify-between items-center bg-black/60 px-4 py-2 border-b border-white/5 text-[10px] text-gray-400 font-mono">
+                  <span className="font-bold uppercase tracking-wider">{match ? match[1] : 'code'}</span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(codeText);
+                    }}
+                    className="flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer text-gray-400 bg-white/5 px-2 py-1 rounded hover:bg-white/10"
+                  >
+                    <FaCopy className="w-3 h-3" />
+                    <span>Copy Code</span>
+                  </button>
+                </div>
+                <pre className="bg-black/40 p-4 font-mono text-xs text-neon-cyan overflow-x-auto shadow-inner">
+                  <code className={className} {...props}>
+                    {children}
+                  </code>
+                </pre>
+              </div>
+            );
+          }
+        }}
+      >
+        {sanitized}
+      </ReactMarkdown>
+    </div>
+  );
+};
+
 export const StudyNotes: React.FC = () => {
-  const { token } = useAuthStore();
+  const { token, updateProfile } = useAuthStore();
   const navigate = useNavigate();
 
   const [notes, setNotes] = useState<StudyNote[]>([]);
@@ -259,6 +377,25 @@ export const StudyNotes: React.FC = () => {
     window.print();
   };
 
+  const handleDownloadMarkdown = () => {
+    if (!selectedNote) return;
+    const element = document.createElement("a");
+    const file = new Blob([selectedNote.content], { type: 'text/markdown;charset=utf-8' });
+    element.href = URL.createObjectURL(file);
+    element.download = `${selectedNote.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.md`;
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+    setSuccessMessage('Markdown file downloaded successfully.');
+    setTimeout(() => setSuccessMessage(null), 2500);
+  };
+
+  const handleDownloadPDF = () => {
+    setSuccessMessage("Opening browser print layout. Please select 'Save as PDF' as the Destination.");
+    setTimeout(() => setSuccessMessage(null), 5000);
+    window.print();
+  };
+
   // Self-Test interactive logic
   const startSelfTest = () => {
     setUserAnswers([null, null, null]);
@@ -273,11 +410,30 @@ export const StudyNotes: React.FC = () => {
     setUserAnswers(answers);
   };
 
-  const nextQuestion = () => {
+  const nextQuestion = async () => {
     if (currentQuestionIndex < 2) {
       setCurrentQuestionIndex(prev => prev + 1);
     } else {
       setTestConcluded(true);
+      if (selectedNote) {
+        try {
+          const res = await fetch(`/api/study/notes/${selectedNote.noteId}/complete`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.profile) {
+              updateProfile(data.profile);
+            }
+          }
+        } catch (err) {
+          console.error('[STUDY FRONTLINE] Completion api trigger failed:', err);
+        }
+      }
     }
   };
 
@@ -303,92 +459,7 @@ export const StudyNotes: React.FC = () => {
     }
   };
 
-  // Custom markdown simple parser
-  const renderMarkdown = (md: string) => {
-    if (!md) return null;
-    const lines = md.split('\n');
-    let inCodeBlock = false;
-    let codeBlockContent: string[] = [];
-    let codeLanguage = '';
 
-    const renderedElements: React.ReactNode[] = [];
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-
-      if (line.trim().startsWith('```')) {
-        if (inCodeBlock) {
-          inCodeBlock = false;
-          renderedElements.push(
-            <pre key={`code-${i}`} className="bg-black/75 p-4 rounded-xl border border-neon-purple/20 font-mono text-xs text-neon-cyan overflow-x-auto my-4 shadow relative">
-              <span className="absolute top-2 right-3 text-[8px] font-black uppercase text-gray-600 tracking-wider">{codeLanguage || 'code'}</span>
-              <code>{codeBlockContent.join('\n')}</code>
-            </pre>
-          );
-          codeBlockContent = [];
-          codeLanguage = '';
-        } else {
-          inCodeBlock = true;
-          codeLanguage = line.trim().slice(3);
-        }
-        continue;
-      }
-
-      if (inCodeBlock) {
-        codeBlockContent.push(line);
-        continue;
-      }
-
-      if (line.startsWith('# ')) {
-        renderedElements.push(<h1 key={i} className="font-display font-black text-lg text-white mt-6 mb-3 border-b border-white/5 pb-2 uppercase tracking-wide">{parseInline(line.slice(2))}</h1>);
-        continue;
-      }
-      if (line.startsWith('## ')) {
-        renderedElements.push(<h2 key={i} className="font-display font-bold text-base text-neon-purple mt-5 mb-2.5 uppercase tracking-wide">{parseInline(line.slice(3))}</h2>);
-        continue;
-      }
-      if (line.startsWith('### ')) {
-        renderedElements.push(<h3 key={i} className="font-display font-bold text-xs text-neon-cyan mt-4 mb-2 uppercase tracking-wide">{parseInline(line.slice(4))}</h3>);
-        continue;
-      }
-
-      if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
-        renderedElements.push(
-          <ul key={i} className="list-disc pl-6 my-2 text-xs md:text-sm text-gray-300 leading-relaxed">
-            <li>{parseInline(line.trim().slice(2))}</li>
-          </ul>
-        );
-        continue;
-      }
-
-      if (line.trim() === '---') {
-        renderedElements.push(<hr key={i} className="border-white/5 my-6" />);
-        continue;
-      }
-
-      if (line.trim() !== '') {
-        renderedElements.push(<p key={i} className="text-xs md:text-sm text-gray-300 leading-relaxed my-3 font-normal">{parseInline(line)}</p>);
-      }
-    }
-
-    return renderedElements;
-  };
-
-  const parseInline = (text: string): React.ReactNode[] => {
-    const parts = text.split('**');
-    return parts.map((part, index) => {
-      if (index % 2 === 1) {
-        return <strong key={index} className="text-white font-extrabold">{part}</strong>;
-      }
-      const subParts = part.split('`');
-      return subParts.map((subPart, subIndex) => {
-        if (subIndex % 2 === 1) {
-          return <code key={subIndex} className="bg-white/10 px-1.5 py-0.5 rounded text-neon-cyan font-mono text-xs">{subPart}</code>;
-        }
-        return subPart;
-      });
-    });
-  };
 
   // Filtered lists of notes
   const filteredNotes = useMemo(() => {
@@ -548,18 +619,72 @@ export const StudyNotes: React.FC = () => {
           
           <AnimatePresence mode="wait">
             
-            {/* Case A: A study note is actively open for reading */}
-            {selectedNote ? (
+            {generating ? (
+              <motion.div
+                key="generating-skeleton"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                className="glass-panel p-6 rounded-3xl border border-neon-purple/20 bg-neon-purple/[0.01] space-y-6"
+              >
+                {/* Skeleton Header */}
+                <div className="space-y-3 border-b border-white/5 pb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-16 h-4 bg-white/5 rounded animate-pulse"></div>
+                    <div className="w-24 h-4 bg-white/5 rounded animate-pulse"></div>
+                  </div>
+                  <div className="h-7 w-3/4 bg-white/10 rounded animate-pulse"></div>
+                  <div className="h-4 w-1/2 bg-white/5 rounded animate-pulse"></div>
+                </div>
+
+                {/* Skeleton Body Content */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 rounded-full bg-neon-cyan/20 animate-pulse flex items-center justify-center">
+                      <div className="w-2 h-2 rounded-full bg-neon-cyan animate-ping"></div>
+                    </div>
+                    <span className="text-xs font-bold text-neon-cyan animate-pulse tracking-wide uppercase">AI is preparing your study notes...</span>
+                  </div>
+                  
+                  {/* Progress Bar inside skeleton */}
+                  <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden shadow-inner">
+                    <div 
+                      className="h-full bg-gradient-to-r from-neon-purple to-neon-cyan transition-all duration-300"
+                      style={{ width: `${generationProgress}%` }}
+                    ></div>
+                  </div>
+                  <span className="text-[10px] text-gray-500 font-bold font-mono">{generationProgress}% Completed</span>
+
+                  <div className="space-y-2.5 pt-4">
+                    <div className="h-4 w-full bg-white/5 rounded animate-pulse"></div>
+                    <div className="h-4 w-11/12 bg-white/5 rounded animate-pulse"></div>
+                    <div className="h-4 w-10/12 bg-white/5 rounded animate-pulse"></div>
+                    <div className="h-4 w-full bg-white/5 rounded animate-pulse"></div>
+                  </div>
+
+                  <div className="h-32 w-full bg-black/30 rounded-xl border border-white/5 p-4 space-y-2 animate-pulse mt-6">
+                    <div className="h-3 w-16 bg-white/5 rounded"></div>
+                    <div className="h-3 w-2/3 bg-white/5 rounded"></div>
+                    <div className="h-3 w-1/2 bg-white/5 rounded"></div>
+                  </div>
+
+                  <div className="space-y-2.5 pt-4">
+                    <div className="h-4 w-full bg-white/5 rounded animate-pulse"></div>
+                    <div className="h-4 w-9/12 bg-white/5 rounded animate-pulse"></div>
+                  </div>
+                </div>
+              </motion.div>
+            ) : selectedNote ? (
               <motion.div
                 key="open-note"
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -15 }}
-                className="glass-panel p-6 rounded-3xl border border-white/10 space-y-6 print:border-none print:bg-white print:p-0"
+                className="glass-panel p-6 rounded-3xl border border-white/10 space-y-6 print:border-none print:bg-white print:p-0 print-container"
               >
                 
                 {/* Note Details Header */}
-                <div className="flex justify-between items-start border-b border-white/5 pb-4 print:hidden">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-white/5 pb-4 print:hidden">
                   <div className="space-y-1">
                     <button
                       onClick={() => setSelectedNote(null)}
@@ -581,26 +706,49 @@ export const StudyNotes: React.FC = () => {
                     <h2 className="font-display font-black text-xl text-white tracking-wide uppercase mt-1">{selectedNote.title}</h2>
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2 print:hidden">
                     <button
                       onClick={(e) => handleToggleFavorite(e, selectedNote.noteId)}
-                      className="p-2.5 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/5 text-gray-400 hover:text-yellow-400 transition-all cursor-pointer"
+                      title="Add to Favorites"
+                      className="p-2.5 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/5 text-gray-400 hover:text-yellow-400 transition-all cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <FaStar className={`w-4 h-4 ${selectedNote.isFavorite ? 'text-yellow-400' : 'text-gray-500'}`} />
                     </button>
+                    
                     <button
                       onClick={handleCopyClipboard}
-                      title="Copy Markdown"
-                      className="p-2.5 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/5 text-gray-400 hover:text-white transition-all cursor-pointer"
+                      title="Copy Markdown Content"
+                      className="px-3 py-2.5 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/5 text-gray-400 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
                     >
-                      <FaCopy className="w-4 h-4" />
+                      <FaCopy className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Copy Notes</span>
                     </button>
+
+                    <button
+                      onClick={handleDownloadMarkdown}
+                      title="Download as Markdown file"
+                      className="px-3 py-2.5 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/5 text-gray-400 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+                    >
+                      <FaDownload className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Download MD</span>
+                    </button>
+
+                    <button
+                      onClick={handleDownloadPDF}
+                      title="Download as PDF"
+                      className="px-3 py-2.5 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/5 text-gray-400 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+                    >
+                      <FaFilePdf className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Download PDF</span>
+                    </button>
+
                     <button
                       onClick={handlePrint}
                       title="Print Study Sheet"
-                      className="p-2.5 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/5 text-gray-400 hover:text-white transition-all cursor-pointer"
+                      className="px-3 py-2.5 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/5 text-gray-400 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
                     >
-                      <FaPrint className="w-4 h-4" />
+                      <FaPrint className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Print Notes</span>
                     </button>
                   </div>
                 </div>
@@ -631,8 +779,8 @@ export const StudyNotes: React.FC = () => {
 
                 {/* Sub Tab contents */}
                 {activeSubTab === 'content' ? (
-                  <div className="prose max-w-none text-left print:text-black">
-                    {renderMarkdown(selectedNote.content)}
+                  <div className="print-container">
+                    <MarkdownRenderer content={selectedNote.content} />
                   </div>
                 ) : (
                   <div className="space-y-6 text-left">
@@ -877,38 +1025,6 @@ export const StudyNotes: React.FC = () => {
           </AnimatePresence>
         </div>
       </div>
-
-      {/* Global AI Generating Overlay Loader */}
-      <AnimatePresence>
-        {generating && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/85 backdrop-blur-md"
-          >
-            <div className="relative w-24 h-24 mb-6">
-              <div className="absolute inset-0 rounded-full border-4 border-t-neon-cyan border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
-              <div className="absolute inset-2 rounded-full border-4 border-b-neon-purple border-t-transparent border-r-transparent border-l-transparent animate-spin-reverse opacity-70"></div>
-              <div className="absolute inset-0 flex items-center justify-center text-2xl animate-pulse">📚</div>
-            </div>
-            
-            <h3 className="font-display font-black text-xl text-white tracking-wider uppercase mb-1">AI Mentor Compiling Notes</h3>
-            <p className="text-xs text-neon-cyan font-bold font-mono tracking-widest uppercase mb-6 animate-pulse">
-              Synthesizing theory, code, and practice MCQs...
-            </p>
-            
-            {/* Custom progress bar */}
-            <div className="w-64 h-1.5 bg-white/10 rounded-full overflow-hidden shadow-inner">
-              <motion.div 
-                className="h-full bg-gradient-to-r from-neon-purple to-neon-cyan transition-all duration-300"
-                style={{ width: `${generationProgress}%` }}
-              ></motion.div>
-            </div>
-            <span className="text-[10px] text-gray-500 font-bold mt-2 font-mono">{generationProgress}% Completed</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 };

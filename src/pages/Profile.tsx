@@ -65,7 +65,7 @@ export const Profile: React.FC = () => {
     if (lvl <= 1) return 100;
     let total = 100;
     for (let i = 2; i <= lvl; i++) {
-      total += 50 + 100 * (i - 1);
+      total += 100 + 50 * (i - 1);
     }
     return total;
   };
@@ -131,13 +131,21 @@ export const Profile: React.FC = () => {
           </p>
         </div>
 
-        {/* Customize Locker Button */}
-        <button
-          onClick={() => navigate('/personalization')}
-          className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-display font-bold text-xs uppercase tracking-wider hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer z-10"
-        >
-          🎨 Customize Profile
-        </button>
+        {/* Customize Profile Actions */}
+        <div className="flex flex-wrap gap-2.5 justify-center z-10">
+          <button
+            onClick={() => navigate('/personalization?tab=avatar')}
+            className="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white font-display font-bold text-xs uppercase tracking-wider hover:scale-[1.03] active:scale-95 transition-all duration-200 cursor-pointer"
+          >
+            🎨 Locker Cosmetics
+          </button>
+          <button
+            onClick={() => navigate('/personalization?tab=edit_profile')}
+            className="px-4 py-2.5 rounded-xl bg-gradient-to-tr from-neon-purple to-neon-pink text-white font-display font-bold text-xs uppercase tracking-wider hover:scale-[1.03] active:scale-95 transition-all duration-200 cursor-pointer shadow-lg shadow-neon-purple/20"
+          >
+            ⚙️ Edit Profile Details
+          </button>
+        </div>
 
         {/* XP Level Progress Bar */}
         <div className="w-full max-w-xs space-y-1.5 z-10">
@@ -147,7 +155,7 @@ export const Profile: React.FC = () => {
           </div>
           <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden border border-white/5 shadow-inner">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-neon-purple to-neon-pink shadow-glow"
+              className="h-full rounded-full bg-gradient-to-r from-neon-purple to-neon-pink shadow-glow transition-all duration-500 ease-out"
               style={{ width: `${lvlDetails.percentage}%` }}
             ></div>
           </div>

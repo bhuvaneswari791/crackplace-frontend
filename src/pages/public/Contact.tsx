@@ -5,7 +5,7 @@ import { FaChevronLeft, FaEnvelope, FaMapPin, FaPaperPlane } from 'react-icons/f
 
 export const Contact: React.FC = () => {
   const [submitted, setSubmitted] = useState(false);
-  
+
   useSEO({
     title: 'Contact Us - Get in Touch',
     description: 'Have questions about partnership opportunities, group institutional pricing, or features? Reach out to the CrackPlace AI support team.',
@@ -18,7 +18,7 @@ export const Contact: React.FC = () => {
         '@type': 'EducationalOrganization',
         'name': 'CrackPlace AI',
         'email': 'support@crackplace.ai',
-        'url': 'https://bhuvaneswari791.github.io/CrackPlace-AI'
+        'url': 'https://bhuvaneswari791.github.io/crackplace-frontend'
       }
     }
   });
@@ -31,8 +31,8 @@ export const Contact: React.FC = () => {
   return (
     <div className="min-h-screen bg-bg-dark text-white gradient-bg flex flex-col justify-between py-12 px-6 md:px-12">
       <div className="max-w-3xl mx-auto w-full space-y-8">
-        <Link 
-          to="/" 
+        <Link
+          to="/"
           className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-gray-400 hover:text-white transition-colors"
         >
           <FaChevronLeft className="w-3 h-3" />

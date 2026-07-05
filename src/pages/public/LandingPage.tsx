@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSEO } from '../../hooks/useSEO';
-import { 
-  FaRocket, 
-  FaCode, 
-  FaGamepad, 
-  FaComments, 
-  FaBookOpen, 
-  FaArrowRight, 
+import {
+  FaRocket,
+  FaCode,
+  FaGamepad,
+  FaComments,
+  FaBookOpen,
+  FaArrowRight,
   FaStar,
   FaChevronDown,
   FaShieldHalved,
@@ -34,14 +34,14 @@ export const LandingPage: React.FC = () => {
       '@context': 'https://schema.org',
       '@type': 'WebApplication',
       'name': 'CrackPlace AI',
-      'url': 'https://bhuvaneswari791.github.io/CrackPlace-AI',
+      'url': 'https://bhuvaneswari791.github.io/crackplace-frontend',
       'description': 'AI-powered campus placement preparation platform with gamified workspaces, PvP coding battles, and HR simulators.',
       'applicationCategory': 'EducationalApplication',
       'operatingSystem': 'All',
       'offers': {
         '@type': 'Offer',
         'price': '0',
-        'priceCurrency': 'USD'
+        'priceCurrency': 'INR'
       }
     }
   });
@@ -149,14 +149,14 @@ export const LandingPage: React.FC = () => {
         </nav>
 
         <div className="flex items-center gap-4">
-          <Link 
-            to="/login" 
+          <Link
+            to="/login"
             className="text-gray-400 hover:text-white text-xs uppercase font-bold tracking-wider font-display transition-colors"
           >
             Sign In
           </Link>
-          <Link 
-            to="/register" 
+          <Link
+            to="/register"
             className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-neon-purple to-neon-pink text-white font-display text-xs font-bold uppercase tracking-wider hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-neon-purple/20"
           >
             Get Started
@@ -177,14 +177,14 @@ export const LandingPage: React.FC = () => {
             CrackPlace AI combines real-time compiler sandboxes, customized study lockers, structured STAR HR recruiter simulators, and gamified ELO battles to guarantee tech careers.
           </p>
           <div className="pt-4 flex flex-col sm:flex-row gap-4">
-            <Link 
+            <Link
               to="/register"
               className="px-8 py-4 rounded-xl bg-gradient-to-r from-neon-purple to-neon-pink text-white font-display text-xs font-bold uppercase tracking-wider shadow-lg shadow-neon-purple/25 flex items-center justify-center gap-2 hover:scale-[1.03] active:scale-[0.97] transition-all cursor-pointer"
             >
               <span>Initialize Prep Protocol</span>
               <FaArrowRight className="w-3.5 h-3.5" />
             </Link>
-            <Link 
+            <Link
               to="/login"
               className="px-8 py-4 rounded-xl border border-white/5 bg-white/[0.01] hover:bg-white/[0.03] hover:border-white/10 text-white font-display text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer"
             >
@@ -258,7 +258,7 @@ export const LandingPage: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {features.map((f, idx) => (
-            <div 
+            <div
               key={idx}
               className="glass-panel p-6 rounded-2xl border border-white/5 space-y-4 hover:border-white/10 transition-colors flex flex-col justify-between"
             >
@@ -313,8 +313,8 @@ export const LandingPage: React.FC = () => {
 
         <div className="space-y-4">
           {faqs.map((faq, idx) => (
-            <div 
-              key={idx} 
+            <div
+              key={idx}
               className="glass-panel rounded-xl border border-white/5 overflow-hidden transition-all duration-300"
             >
               <button
@@ -322,8 +322,8 @@ export const LandingPage: React.FC = () => {
                 className="w-full p-5 text-left flex justify-between items-center font-display text-sm font-bold text-white hover:bg-white/[0.01]"
               >
                 <span>{faq.q}</span>
-                <FaChevronDown 
-                  className={`w-3.5 h-3.5 text-gray-500 transition-transform duration-300 ${activeFaq === idx ? 'rotate-180 text-white' : ''}`} 
+                <FaChevronDown
+                  className={`w-3.5 h-3.5 text-gray-500 transition-transform duration-300 ${activeFaq === idx ? 'rotate-180 text-white' : ''}`}
                 />
               </button>
               {activeFaq === idx && (
@@ -347,7 +347,7 @@ export const LandingPage: React.FC = () => {
             Gain immediate access to competitive coding workspaces, STAR behavioral HR simulators, and dynamic study notes.
           </p>
           <div className="pt-2">
-            <Link 
+            <Link
               to="/register"
               className="px-8 py-4 rounded-xl bg-gradient-to-r from-neon-purple to-neon-pink text-white font-display text-xs font-bold uppercase tracking-wider shadow-lg shadow-neon-purple/20 hover:scale-[1.03] active:scale-[0.97] transition-all inline-flex items-center gap-2 cursor-pointer"
             >

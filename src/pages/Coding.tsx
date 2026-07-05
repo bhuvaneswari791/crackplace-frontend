@@ -86,6 +86,54 @@ export const Coding: React.FC = () => {
   const [reviewResult, setReviewResult] = useState<AIReview | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
 
+  // Panel resizing states
+  const [leftWidth, setLeftWidth] = useState<number>(45); // Left side width in percentage
+  const [consoleHeight, setConsoleHeight] = useState<number>(200); // Console height in pixels
+  const [isResizingWidth, setIsResizingWidth] = useState<boolean>(false);
+  const [isResizingHeight, setIsResizingHeight] = useState<boolean>(false);
+  const [isConsoleCollapsed, setIsConsoleCollapsed] = useState<boolean>(false);
+  
+  // Mobile layout active tab
+  const [activeMobileTab, setActiveMobileTab] = useState<'problem' | 'editor' | 'testcases' | 'output' | 'console'>('problem');
+
+  // Resizing mouse/touch drag listener
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isResizingWidth) {
+        const newPercentage = (e.clientX / window.innerWidth) * 100;
+        if (newPercentage > 20 && newPercentage < 80) {
+          setLeftWidth(newPercentage);
+        }
+      }
+      if (isResizingHeight) {
+        const container = document.getElementById('coding-workspace-grid');
+        if (container) {
+          const rect = container.getBoundingClientRect();
+          const newHeight = rect.bottom - e.clientY;
+          // Maintain at least 500px for editor container (from container height)
+          const maxConsoleHeight = rect.height - 520;
+          if (newHeight > 60 && newHeight < Math.max(80, maxConsoleHeight)) {
+            setConsoleHeight(newHeight);
+          }
+        }
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingWidth(false);
+      setIsResizingHeight(false);
+    };
+
+    if (isResizingWidth || isResizingHeight) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizingWidth, isResizingHeight]);
+
   // Sync starter code when language changes or problem loads
   useEffect(() => {
     if (problem) {
@@ -127,7 +175,7 @@ export const Coding: React.FC = () => {
     }
   };
 
-  const handleRunCode = async () => {
+  const handleRunCode = async (isSubmit: boolean = false) => {
     if (!problem) return;
     setRunning(true);
     setRunResult(null);
@@ -141,7 +189,8 @@ export const Coding: React.FC = () => {
         body: JSON.stringify({
           problemId: problem.problemId,
           code,
-          language
+          language,
+          submit: isSubmit
         })
       });
 
@@ -152,8 +201,8 @@ export const Coding: React.FC = () => {
       const result = await response.json();
       setRunResult(result);
 
-      // If user successfully solved the problem, trigger local stats update
-      if (result.passed) {
+      // If user successfully solved the problem (submitted and passed), trigger local stats update
+      if (result.passed && isSubmit) {
         fetch('/api/auth/verify', {
           method: 'POST',
           headers: {
@@ -285,18 +334,18 @@ export const Coding: React.FC = () => {
 
   // State 3: Active Workspace
   return (
-    <div className="h-auto lg:h-[calc(100vh-140px)] flex flex-col gap-6 animate-fade-in pb-16 lg:pb-0">
+    <div className="h-auto lg:h-[calc(100vh-140px)] flex flex-col gap-6 animate-fade-in pb-24 md:pb-16 lg:pb-0 relative overflow-hidden" id="coding-workspace">
       {/* Workspace Header */}
-      <div className="flex justify-between items-center px-2">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 px-2 select-none shrink-0">
         <div>
           <span className="text-[10px] font-bold uppercase tracking-widest text-neon-cyan">{problem?.category} • {problem?.difficulty}</span>
           <h1 className="font-display font-black text-xl text-white tracking-wide mt-0.5">{problem?.title}</h1>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
           <select
             value={language}
             onChange={(e) => setLanguage(e.target.value as any)}
-            className="glass-input px-4 py-2.5 rounded-xl text-xs appearance-none bg-bg-dark font-display font-bold cursor-pointer border-neon-purple/30"
+            className="glass-input px-4 py-2.5 rounded-xl text-xs appearance-none bg-bg-dark font-display font-bold cursor-pointer border-neon-purple/30 focus:outline-none"
           >
             <option value="python" className="bg-bg-dark">Python 3</option>
             <option value="javascript" className="bg-bg-dark">JavaScript (ES6)</option>
@@ -313,70 +362,116 @@ export const Coding: React.FC = () => {
         </div>
       </div>
 
-      {/* Pane Grid Layout */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0">
-        {/* Left Panel: Problem Details */}
-        <div className="glass-panel p-6 rounded-3xl overflow-y-auto space-y-6 flex flex-col min-h-0">
-          <div className="space-y-4">
-            <h3 className="font-display font-bold text-sm uppercase tracking-wider text-neon-purple border-b border-white/5 pb-2">
-              Problem Description
-            </h3>
-            <p className="text-sm text-gray-300 whitespace-pre-line leading-relaxed">
-              {problem?.description}
-            </p>
-          </div>
+      {/* Mobile active tabs (Mobile only) */}
+      <div className="flex md:hidden border-b border-white/5 bg-white/[0.01] p-1 rounded-xl overflow-x-auto scrollbar-none gap-1 shrink-0">
+        {(['problem', 'editor', 'testcases', 'output', 'console'] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveMobileTab(tab)}
+            className={`flex-1 min-w-[70px] text-center py-2 px-1 rounded-lg font-display font-bold text-[9px] uppercase tracking-wider transition-all duration-200 cursor-pointer whitespace-nowrap
+              ${activeMobileTab === tab
+                ? 'bg-neon-purple/20 text-white border border-neon-purple/40 shadow-glow'
+                : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
+              }`}
+          >
+            {tab === 'testcases' ? 'Test Cases' : tab}
+          </button>
+        ))}
+      </div>
 
-          <div className="space-y-3">
-            <h3 className="font-display font-bold text-sm uppercase tracking-wider text-white/50">Constraints</h3>
-            <ul className="list-disc pl-5 text-xs text-gray-400 space-y-1.5">
-              {problem?.constraints.map((c, i) => (
-                <li key={i}>{c}</li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-            <div className="p-3.5 rounded-xl bg-white/[0.01] border border-white/5 space-y-1">
-              <strong className="text-white block font-display">Input Format:</strong>
-              <span className="text-gray-400">{problem?.inputFormat}</span>
+      {/* Workspace content grid */}
+      <div 
+        id="coding-workspace-grid" 
+        className="flex-1 min-h-0 flex flex-col lg:flex-row gap-6 relative select-text"
+      >
+        {/* LEFT COLUMN: Problem Details */}
+        <div 
+          style={{ width: window.innerWidth >= 1024 ? `${leftWidth}%` : undefined }}
+          className={`flex-col min-h-0 shrink-0
+            ${window.innerWidth >= 1024 ? 'flex' : ''}
+            ${activeMobileTab === 'problem' ? 'flex md:flex' : 'hidden md:flex'}
+            ${window.innerWidth < 1024 ? 'w-full lg:w-auto' : ''}
+          `}
+        >
+          <div className="glass-panel p-6 rounded-3xl overflow-y-auto space-y-6 flex-1 min-h-[300px] lg:min-h-0">
+            <div className="space-y-4">
+              <h3 className="font-display font-bold text-sm uppercase tracking-wider text-neon-purple border-b border-white/5 pb-2">
+                Problem Description
+              </h3>
+              <p className="text-sm text-gray-300 whitespace-pre-line leading-relaxed">
+                {problem?.description}
+              </p>
             </div>
-            <div className="p-3.5 rounded-xl bg-white/[0.01] border border-white/5 space-y-1">
-              <strong className="text-white block font-display">Output Format:</strong>
-              <span className="text-gray-400">{problem?.outputFormat}</span>
-            </div>
-          </div>
 
-          <div className="space-y-4">
-            <h3 className="font-display font-bold text-sm uppercase tracking-wider text-white/50">Sample Test Cases</h3>
             <div className="space-y-3">
-              {problem?.sampleCases.map((tc, idx) => (
-                <div key={idx} className="p-4 rounded-xl bg-white/[0.01] border border-white/5 space-y-3 text-xs">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <strong className="text-neon-cyan block font-mono mb-1">Input:</strong>
-                      <pre className="bg-bg-dark/40 p-2.5 rounded-lg font-mono text-gray-300 overflow-x-auto">{tc.input}</pre>
+              <h3 className="font-display font-bold text-sm uppercase tracking-wider text-white/50">Constraints</h3>
+              <ul className="list-disc pl-5 text-xs text-gray-400 space-y-1.5">
+                {problem?.constraints.map((c, i) => (
+                  <li key={i}>{c}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <div className="p-3.5 rounded-xl bg-white/[0.01] border border-white/5 space-y-1">
+                <strong className="text-white block font-display">Input Format:</strong>
+                <span className="text-gray-400">{problem?.inputFormat}</span>
+              </div>
+              <div className="p-3.5 rounded-xl bg-white/[0.01] border border-white/5 space-y-1">
+                <strong className="text-white block font-display">Output Format:</strong>
+                <span className="text-gray-400">{problem?.outputFormat}</span>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="font-display font-bold text-sm uppercase tracking-wider text-white/50">Sample Test Cases</h3>
+              <div className="space-y-3">
+                {problem?.sampleCases.map((tc, idx) => (
+                  <div key={idx} className="p-4 rounded-xl bg-white/[0.01] border border-white/5 space-y-3 text-xs">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <strong className="text-neon-cyan block font-mono mb-1">Input:</strong>
+                        <pre className="bg-bg-dark/40 p-2.5 rounded-lg font-mono text-gray-300 overflow-x-auto">{tc.input}</pre>
+                      </div>
+                      <div>
+                        <strong className="text-neon-purple block font-mono mb-1">Output:</strong>
+                        <pre className="bg-bg-dark/40 p-2.5 rounded-lg font-mono text-gray-300 overflow-x-auto">{tc.output}</pre>
+                      </div>
                     </div>
-                    <div>
-                      <strong className="text-neon-purple block font-mono mb-1">Output:</strong>
-                      <pre className="bg-bg-dark/40 p-2.5 rounded-lg font-mono text-gray-300 overflow-x-auto">{tc.output}</pre>
-                    </div>
+                    {tc.explanation && (
+                      <p className="text-gray-500 italic text-[11px] pt-1">
+                        <strong>Explanation:</strong> {tc.explanation}
+                      </p>
+                    )}
                   </div>
-                  {tc.explanation && (
-                    <p className="text-gray-500 italic text-[11px] pt-1">
-                      <strong>Explanation:</strong> {tc.explanation}
-                    </p>
-                  )}
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Right Panel: Editor & Console */}
-        <div className="flex flex-col gap-4 min-h-0 mt-6 lg:mt-0">
+        {/* Desktop vertical resize drag bar */}
+        <div 
+          onMouseDown={() => setIsResizingWidth(true)} 
+          className="hidden lg:block w-1.5 cursor-col-resize hover:bg-neon-purple/40 bg-white/5 self-stretch transition-all select-none z-10"
+        />
+
+        {/* RIGHT COLUMN: Code Editor, Resizer, and Console Output */}
+        <div 
+          className={`flex-1 flex flex-col gap-4 min-h-0 min-w-0
+            ${window.innerWidth >= 1024 ? 'flex' : ''}
+            ${activeMobileTab === 'editor' || activeMobileTab === 'testcases' || activeMobileTab === 'output' || activeMobileTab === 'console' ? 'flex md:flex' : 'hidden md:flex'}
+          `}
+        >
           {/* Editor Container */}
-          <div className="flex-1 glass-panel rounded-3xl flex flex-col overflow-hidden min-h-[350px] lg:min-h-0 relative">
-            <div className="px-6 py-3 border-b border-white/5 bg-white/[0.01] flex justify-between items-center text-xs text-gray-400 font-mono">
+          <div 
+            className={`glass-panel rounded-3xl flex flex-col overflow-hidden relative
+              ${activeMobileTab === 'editor' ? 'flex' : 'hidden md:flex'}
+              ${window.innerWidth >= 1024 ? 'min-h-[500px]' : 'min-h-[400px]'}
+            `}
+            style={{ height: window.innerWidth >= 1024 ? `calc(100% - ${consoleHeight}px - 16px)` : undefined }}
+          >
+            <div className="px-6 py-3 border-b border-white/5 bg-white/[0.01] flex justify-between items-center text-xs text-gray-400 font-mono select-none">
               <span>editor.workspace.{language}</span>
               <span className="text-neon-cyan uppercase font-bold tracking-widest">Active Coding session</span>
             </div>
@@ -388,8 +483,8 @@ export const Coding: React.FC = () => {
               className="flex-1 p-6 font-mono text-sm text-gray-300 bg-transparent resize-none focus:outline-none leading-relaxed select-text"
             />
 
-            {/* Actions Bar */}
-            <div className="px-6 py-4 border-t border-white/5 bg-white/[0.01] flex justify-end gap-3">
+            {/* Desktop & Tablet Actions Bar */}
+            <div className="hidden md:flex px-6 py-4 border-t border-white/5 bg-white/[0.01] justify-end gap-3 select-none">
               <button
                 onClick={handleTriggerReview}
                 disabled={running || reviewing}
@@ -400,92 +495,194 @@ export const Coding: React.FC = () => {
               </button>
 
               <button
-                onClick={handleRunCode}
+                onClick={() => handleRunCode(false)}
+                disabled={running || reviewing}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-white transition-all text-xs font-semibold uppercase tracking-wider cursor-pointer disabled:opacity-50"
+              >
+                <FaPlay className="w-3.5 h-3.5 text-gray-400" />
+                <span>Run Code</span>
+              </button>
+
+              <button
+                onClick={() => handleRunCode(true)}
                 disabled={running || reviewing}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-purple text-white shadow-lg shadow-neon-cyan/15 hover:shadow-neon-cyan/35 active:scale-98 transition-all text-xs font-semibold uppercase tracking-wider cursor-pointer disabled:opacity-50"
               >
-                <FaPlay className="w-3.5 h-3.5" />
-                <span>{running ? 'Executing...' : 'Run Code'}</span>
+                <FaAward className="w-3.5 h-3.5" />
+                <span>{running ? 'Submitting...' : 'Submit'}</span>
               </button>
             </div>
           </div>
 
-          {/* Console Output Panel */}
-          <div className="h-48 glass-panel p-4 rounded-3xl flex flex-col min-h-0 overflow-hidden">
-            <h4 className="font-display font-bold text-xs uppercase tracking-wider text-neon-cyan border-b border-white/5 pb-2 mb-2 flex items-center gap-2">
-              <FaTerminal className="w-3.5 h-3.5" />
-              <span>Compilation Console</span>
-            </h4>
+          {/* Desktop horizontal height drag bar */}
+          <div 
+            onMouseDown={() => setIsResizingHeight(true)} 
+            className="hidden lg:block h-1.5 cursor-row-resize hover:bg-neon-cyan/40 bg-white/5 transition-all select-none z-10"
+          />
+
+          {/* Console / Testcases / Output Panel */}
+          <div 
+            style={{ 
+              height: window.innerWidth >= 1024 
+                ? (isConsoleCollapsed ? '48px' : `${consoleHeight}px`) 
+                : (isConsoleCollapsed ? '48px' : 'auto')
+            }}
+            className={`glass-panel p-4 rounded-3xl flex flex-col min-h-0 overflow-hidden relative transition-all duration-200
+              ${activeMobileTab === 'testcases' || activeMobileTab === 'output' || activeMobileTab === 'console' ? 'flex' : 'hidden md:flex'}
+            `}
+          >
+            {/* Header / Collapse Trigger */}
+            <div className="flex justify-between items-center border-b border-white/5 pb-2 mb-2 select-none shrink-0">
+              <h4 className="font-display font-bold text-xs uppercase tracking-wider text-neon-cyan flex items-center gap-2">
+                <FaTerminal className="w-3.5 h-3.5" />
+                <span>Console & Test Suite</span>
+              </h4>
+              <button 
+                onClick={() => setIsConsoleCollapsed(!isConsoleCollapsed)}
+                className="hidden md:block text-[10px] uppercase font-bold text-gray-500 hover:text-white px-2 py-1 rounded hover:bg-white/5 cursor-pointer"
+              >
+                {isConsoleCollapsed ? 'Expand ⛶' : 'Collapse ✕'}
+              </button>
+            </div>
             
-            <div className="flex-1 overflow-y-auto font-mono text-xs pr-1">
-              {!runResult && !running && (
-                <p className="text-gray-600 italic">No execution logs. Click "Run Code" above.</p>
-              )}
-              {running && (
-                <p className="text-neon-cyan animate-pulse">Running compilation checks against all test suites...</p>
-              )}
-              {runResult && (
-                <div className="space-y-3">
-                  {/* General Result Header */}
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      {runResult.passed ? (
-                        <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-neon-green/10 text-neon-green font-bold text-[10px] uppercase border border-neon-green/20">
-                          <FaCircleCheck className="w-3 h-3" /> PASSED ALL CASES
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-neon-pink/10 text-neon-pink font-bold text-[10px] uppercase border border-neon-pink/20">
-                          <FaTriangleExclamation className="w-3 h-3" /> TEST SUITE FAILED
-                        </span>
-                      )}
-                    </div>
-                    {runResult.passed && runResult.rewards && (
-                      <div className="flex items-center gap-2 text-yellow-400 font-bold text-[11px]">
-                        <FaAward className="w-3.5 h-3.5 text-neon-purple" />
-                        <span>+{runResult.rewards.xp} XP</span>
-                        <span>•</span>
-                        <span>+{runResult.rewards.coins} Coins</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Standard output/error text */}
-                  {runResult.error && (
-                    <div className="p-2.5 rounded-lg bg-neon-pink/5 border border-neon-pink/20 text-neon-pink font-mono text-[11px] whitespace-pre-wrap leading-relaxed">
-                      {runResult.error}
-                    </div>
-                  )}
-
-                  {runResult.output && (
-                    <pre className="bg-bg-dark/50 p-2.5 rounded-lg text-gray-400 max-h-24 overflow-y-auto whitespace-pre-wrap leading-relaxed font-mono">
-                      {runResult.output}
-                    </pre>
-                  )}
-
-                  {/* TestCaseResults grid */}
-                  {runResult.testCaseResults && (
-                    <div className="space-y-1.5 pt-2">
-                      <p className="text-[10px] uppercase font-bold text-gray-500">Test Cases Details:</p>
-                      {runResult.testCaseResults.map((tcr, idx) => (
-                        <div key={idx} className="flex justify-between items-center p-2 rounded-lg border border-white/5 bg-white/[0.01]">
-                          <span className="text-gray-400 truncate max-w-xs font-mono">Case #{idx+1} (Input: {tcr.input})</span>
-                          <div className="flex items-center gap-3">
-                            <span className="text-[10px] text-gray-500 font-mono">Expected: {tcr.expected} | Actual: {tcr.actual}</span>
-                            {tcr.passed ? (
-                              <FaCircleCheck className="w-3.5 h-3.5 text-neon-green" />
-                            ) : (
-                              <FaCircleXmark className="w-3.5 h-3.5 text-neon-pink" />
-                            )}
-                          </div>
+            {/* Panel Body */}
+            {!isConsoleCollapsed && (
+              <div className="flex-1 overflow-y-auto font-mono text-xs pr-1 space-y-4">
+                {/* Test Cases display */}
+                {(activeMobileTab === 'testcases' || window.innerWidth >= 768) && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] uppercase font-bold text-white/50">Sample Cases Input Format:</p>
+                    <div className="space-y-2">
+                      {problem?.sampleCases.map((tc, idx) => (
+                        <div key={idx} className="p-3 rounded-xl border border-white/5 bg-white/[0.01] space-y-1">
+                          <span className="text-gray-500 font-bold block text-[10px]">Test Case #{idx+1}</span>
+                          <span className="text-gray-300 block">Input: <code className="text-neon-cyan">{tc.input}</code></span>
+                          <span className="text-gray-400 block">Expected: <code className="text-neon-purple">{tc.output}</code></span>
                         </div>
                       ))}
                     </div>
-                  )}
-                </div>
-              )}
-            </div>
+                  </div>
+                )}
+
+                {/* Execution outputs standard error */}
+                {(activeMobileTab === 'output' || window.innerWidth >= 768) && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] uppercase font-bold text-white/50">Execution Standard Output / Error:</p>
+                    {!runResult && !running && (
+                      <p className="text-gray-600 italic">No execution logs. Run or Submit code to compile.</p>
+                    )}
+                    {running && (
+                      <p className="text-neon-cyan animate-pulse">Waiting for compiler logs...</p>
+                    )}
+                    {runResult && (
+                      <div className="space-y-2">
+                        {runResult.error && (
+                          <div className="p-3 rounded-xl bg-neon-pink/5 border border-neon-pink/20 text-neon-pink whitespace-pre-wrap leading-relaxed">
+                            {runResult.error}
+                          </div>
+                        )}
+                        {runResult.output && (
+                          <pre className="bg-bg-dark/50 p-3 rounded-xl text-gray-400 max-h-36 overflow-y-auto whitespace-pre-wrap leading-relaxed font-mono">
+                            {runResult.output}
+                          </pre>
+                        )}
+                        {!runResult.error && !runResult.output && (
+                          <p className="text-gray-500 italic">No stdout generated. Code completed without print logs.</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Compilation console pass/fail badges */}
+                {(activeMobileTab === 'console' || window.innerWidth >= 768) && (
+                  <div className="space-y-3">
+                    <p className="text-[10px] uppercase font-bold text-white/50">Verification Results:</p>
+                    {!runResult && !running && (
+                      <p className="text-gray-600 italic">No execution data. Submissions check suite logs will display here.</p>
+                    )}
+                    {running && (
+                      <p className="text-neon-cyan animate-pulse">Running compilation checks against all test suites...</p>
+                    )}
+                    {runResult && (
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            {runResult.passed ? (
+                              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-neon-green/10 text-neon-green font-bold text-[10px] uppercase border border-neon-green/20 shadow-glow">
+                                <FaCircleCheck className="w-3 h-3" /> PASSED ALL CASES
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-neon-pink/10 text-neon-pink font-bold text-[10px] uppercase border border-neon-pink/20">
+                                <FaTriangleExclamation className="w-3 h-3" /> TEST SUITE FAILED
+                              </span>
+                            )}
+                          </div>
+                          {runResult.passed && runResult.rewards && runResult.rewards.xp > 0 && (
+                            <div className="flex items-center gap-2 text-yellow-400 font-bold text-[11px] animate-bounce">
+                              <FaAward className="w-3.5 h-3.5 text-neon-purple" />
+                              <span>+{runResult.rewards.xp} XP</span>
+                              <span>•</span>
+                              <span>+{runResult.rewards.coins} Coins</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {runResult.testCaseResults && (
+                          <div className="space-y-1.5">
+                            {runResult.testCaseResults.map((tcr, idx) => (
+                              <div key={idx} className="flex justify-between items-center p-2.5 rounded-lg border border-white/5 bg-white/[0.01]">
+                                <span className="text-gray-400 truncate max-w-xs font-mono">Case #{idx+1} (Input: {tcr.input})</span>
+                                <div className="flex items-center gap-3 text-[10px]">
+                                  <span className="text-gray-500 font-mono hidden sm:inline">Expected: {tcr.expected} | Actual: {tcr.actual}</span>
+                                  {tcr.passed ? (
+                                    <FaCircleCheck className="w-4 h-4 text-neon-green shrink-0" />
+                                  ) : (
+                                    <FaCircleXmark className="w-4 h-4 text-neon-pink shrink-0" />
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
+      </div>
+
+      {/* Sticky Bottom Actions Bar (Mobile only) */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-bg-dark/95 border-t border-white/5 p-4 flex gap-3 md:hidden select-none pb-safe">
+        <button
+          onClick={handleTriggerReview}
+          disabled={running || reviewing}
+          className="flex-1 py-3 px-1 rounded-xl border border-white/5 bg-white/[0.02] active:scale-95 transition-all text-[10px] font-display font-black uppercase tracking-wider text-neon-purple disabled:opacity-50 h-12 flex items-center justify-center gap-1.5"
+        >
+          <FaRobot className="w-3.5 h-3.5" />
+          <span>Review</span>
+        </button>
+
+        <button
+          onClick={() => handleRunCode(false)}
+          disabled={running || reviewing}
+          className="flex-1 py-3 px-1 rounded-xl border border-white/10 bg-white/5 active:scale-95 transition-all text-[10px] font-display font-black uppercase tracking-wider text-white disabled:opacity-50 h-12 flex items-center justify-center gap-1.5"
+        >
+          <FaPlay className="w-3.5 h-3.5 text-gray-400" />
+          <span>Run</span>
+        </button>
+
+        <button
+          onClick={() => handleRunCode(true)}
+          disabled={running || reviewing}
+          className="flex-1 py-3 px-1 rounded-xl bg-gradient-to-r from-neon-cyan to-neon-purple text-white font-display font-black text-[10px] tracking-widest uppercase shadow-lg shadow-neon-cyan/25 active:scale-95 transition-all disabled:opacity-50 h-12 flex items-center justify-center gap-1.5"
+        >
+          <FaAward className="w-3.5 h-3.5" />
+          <span>{running ? 'Submitting...' : 'Submit'}</span>
+        </button>
       </div>
 
       {/* AI Code Review Modal */}
